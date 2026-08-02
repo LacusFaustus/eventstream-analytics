@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: event_analytics
+    description: "Daily event analytics metrics"
+    columns:
+      - name: event_date
+        description: "Date of the events"
+        tests:
+          - not_null
+      - name: daily_active_users
+        description: "Number of unique users per day"
+        tests:
+          - not_null
+      - name: total_events
+        description: "Total number of events per day"
+      - name: events_per_user
+        description: "Average events per user"

@@ -1,0 +1,160 @@
+version: '3.8'
+
+networks:
+  analytics-network:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  clickhouse-data:
+  redis-data:
+  grafana-data:
+  prometheus-data:
+
+services:
+  # ============================================================
+  # INFRASTRUCTURE
+  # ============================================================
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - analytics-network
+    restart: always
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - analytics-network
+    restart: always
+
+  # ============================================================
+  # STORAGE
+  # ============================================================
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.2
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./storage/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - CLICKHOUSE_DB=analytics
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASSWORD=clickhouse_pass
+    networks:
+      - analytics-network
+    restart: always
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis-analytics
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis_pass
+    volumes:
+      - redis-data:/data
+    networks:
+      - analytics-network
+    restart: always
+
+  # ============================================================
+  # SERVICES
+  # ============================================================
+
+  data-generator:
+    build:
+      context: ./ingestion/data-generator
+      dockerfile: Dockerfile
+    container_name: data-generator
+    depends_on:
+      - kafka
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - GENERATOR_EVENTS_PER_SECOND=1000
+    ports:
+      - "8080:8080"
+    networks:
+      - analytics-network
+    restart: always
+
+  analytics-api:
+    build:
+      context: ./serving/analytics-api
+      dockerfile: Dockerfile
+    container_name: analytics-api
+    depends_on:
+      - clickhouse
+      - redis
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_DB=analytics
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASSWORD=clickhouse_pass
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=redis_pass
+    networks:
+      - analytics-network
+    restart: always
+
+  # ============================================================
+  # MONITORING
+  # ============================================================
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - analytics-network
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - analytics-network
+    restart: always

@@ -1,0 +1,23 @@
+{
+  "index_patterns": ["events-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 2,
+      "number_of_replicas": 1,
+      "refresh_interval": "5s"
+    },
+    "mappings": {
+      "properties": {
+        "eventId": { "type": "keyword" },
+        "userId": { "type": "long" },
+        "eventType": { "type": "keyword" },
+        "category": { "type": "keyword" },
+        "city": { "type": "keyword" },
+        "device": { "type": "keyword" },
+        "timestamp": { "type": "date" },
+        "lat": { "type": "float" },
+        "lon": { "type": "float" }
+      }
+    }
+  }
+}
