@@ -34,7 +34,12 @@ jobs:
 
       - name: Build and push Docker images
         run: |
+          # ✅ Преобразование в нижний регистр
+          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
           for service in data-generator analytics-api; do
-            docker build -t ghcr.io/${{ github.repository }}/$service:${{ github.sha }} ./$service
-            docker push ghcr.io/${{ github.repository }}/$service:${{ github.sha }}
+            echo "Building $service..."
+            docker build -t ghcr.io/$REPO/$service:${{ github.sha }} ./$service
+            docker push ghcr.io/$REPO/$service:${{ github.sha }}
+            echo "✅ $service pushed"
           done
