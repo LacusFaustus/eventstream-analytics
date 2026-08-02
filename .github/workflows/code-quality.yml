@@ -33,7 +33,7 @@ jobs:
            mvn jacoco:report -Djacoco.skip=false || echo "Coverage report skipped"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: |
