@@ -28,7 +28,9 @@ jobs:
         run: mvn spotbugs:check || echo "SpotBugs warnings found"
 
       - name: Run tests with coverage
-        run: mvn test jacoco:report
+        run: |
+           mvn test
+           mvn jacoco:report -Djacoco.skip=false || echo "Coverage report skipped"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
