@@ -5,6 +5,12 @@ on:
     branches: [ "main", "eventstream-analytics" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
