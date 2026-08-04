@@ -24,7 +24,7 @@ jobs:
         run: mvn clean package -DskipTests
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             **/target/*.jar
