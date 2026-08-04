@@ -37,9 +37,16 @@ jobs:
           # ✅ Преобразование в нижний регистр
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           
-          for service in data-generator analytics-api; do
-            echo "Building $service..."
-            docker build -t ghcr.io/$REPO/$service:${{ github.sha }} ./$service
-            docker push ghcr.io/$REPO/$service:${{ github.sha }}
-            echo "✅ $service pushed"
-          done
+          # Сборка data-generator
+          echo "📦 Building data-generator..."
+          docker build -t ghcr.io/$REPO/data-generator:${{ github.sha }} \
+            -f ./ingestion/data-generator/Dockerfile ./ingestion/data-generator
+          docker push ghcr.io/$REPO/data-generator:${{ github.sha }}
+          echo "✅ data-generator pushed"
+          
+          # Сборка analytics-api
+          echo "📦 Building analytics-api..."
+          docker build -t ghcr.io/$REPO/analytics-api:${{ github.sha }} \
+            -f ./serving/analytics-api/Dockerfile ./serving/analytics-api
+          docker push ghcr.io/$REPO/analytics-api:${{ github.sha }}
+          echo "✅ analytics-api pushed"
